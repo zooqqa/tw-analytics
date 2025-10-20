@@ -6,7 +6,9 @@
       "Bash(git init:*)",
       "Bash(python:*)",
       "Bash(chmod:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(uvicorn:*)"
     ],
     "deny": [],
     "ask": []
