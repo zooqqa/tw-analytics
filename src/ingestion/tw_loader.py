@@ -27,9 +27,15 @@ REQUIRED_TW_COLUMNS = {
     "install2reg",
     "reg2dep",
     "income_usd",
+    "epc",
+}
+
+# Опциональные колонки (могут присутствовать в старом или новом формате)
+OPTIONAL_TW_COLUMNS = {
     "average_bill",
     "purchases_sum",
-    "epc",
+    "d14_aov",
+    "d14_purchases_sum",
 }
 
 
@@ -81,10 +87,14 @@ def _read_tw_csv(file_path: Path) -> pd.DataFrame:
         "income_usd": float,
         "average_bill": float,
         "purchases_sum": float,
+        "d14_aov": float,
+        "d14_purchases_sum": float,
         "epc": float,
     }
 
     for column, cast_type in numeric_fields.items():
+        if column not in df.columns:
+            continue  # Пропускаем если колонки нет
         df[column] = (
             pd.to_numeric(
                 df[column].astype(str).str.replace(",", ".", regex=False),
@@ -147,6 +157,8 @@ def load_tw_file(file_path: str | Path, session: Session) -> str:
                     "tw_income_usd": float(row.get("income_usd", 0) or 0),
                     "tw_average_bill": float(row.get("average_bill", 0) or 0),
                     "tw_purchases_sum": float(row.get("purchases_sum", 0) or 0),
+                    "tw_d14_aov": float(row.get("d14_aov", 0) or 0),
+                    "tw_d14_purchases_sum": float(row.get("d14_purchases_sum", 0) or 0),
                     "tw_epc": float(row.get("epc", 0) or 0),
                 }
             )

@@ -43,6 +43,7 @@ METADATA = [
     {"key": "calculated_cpi", "dimension": False},
     {"key": "profit", "dimension": False},
     {"key": "roi_pct", "dimension": False},
+    {"key": "kpi_pct", "dimension": False},
 ]
 ALL_COLUMNS = [item["key"] for item in METADATA]
 COLUMN_SET = set(ALL_COLUMNS)
@@ -58,12 +59,15 @@ FLOAT_FIELDS = {
     "tw_epc",
     "tw_income_usd",
     "tw_purchases_sum",
+    "tw_d14_aov",
+    "tw_d14_purchases_sum",
     "m_cpi",
     "m_spend",
     "calculated_spend",
     "calculated_cpi",
     "profit",
     "roi_pct",
+    "kpi_pct",
 }
 INT_FIELDS = {
     "tw_installations",
@@ -88,6 +92,8 @@ AGG_NUMERIC_COLUMNS = {
     "tw_installations",
     "tw_income_usd",
     "tw_purchases_sum",
+    "tw_d14_aov",
+    "tw_d14_purchases_sum",
     "m_impression",
     "m_click",
     "m_install",
@@ -97,6 +103,7 @@ AGG_NUMERIC_COLUMNS = {
     "calculated_cpi",
     "profit",
     "roi_pct",
+    "kpi_pct",
 }
 
 

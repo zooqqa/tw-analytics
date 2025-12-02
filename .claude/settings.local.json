@@ -8,7 +8,9 @@
       "Bash(chmod:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(uvicorn:*)"
+      "Bash(uvicorn:*)",
+      "Bash(.venvScriptsactivate)",
+      "Bash(.venv/Scripts/python.exe -m uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload)"
     ],
     "deny": [],
     "ask": []

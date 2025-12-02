@@ -24,6 +24,23 @@ REQUIRED_MOLOCO_COLUMNS = {
     "CPI",
 }
 
+OPTIONAL_MOLOCO_COLUMNS = {
+    "Campaign ID",
+    "Countries",
+    "App",
+    "App ID",
+    "Creative",
+    "Creative ID",
+    "Conversion",
+    "CTR",
+    "CPA",
+    "Cost per Conversion",
+    "Currency",
+    "registration",
+    "first_purchase",
+    "purchase",
+}
+
 
 def _validate_columns(columns: Iterable[str]) -> None:
     missing = REQUIRED_MOLOCO_COLUMNS.difference(columns)
@@ -46,41 +63,40 @@ def _read_moloco_csv(path: Path) -> pd.DataFrame:
     df["Date"] = pd.to_datetime(df["Date"], errors="coerce").dt.date
     df = df[df["Date"].notna()]
 
-    for column in ["Impression", "Click", "Install"]:
-        df[column] = pd.to_numeric(df[column], errors="coerce").fillna(0).astype(int)
+    # Обработка integer колонок
+    integer_columns = ["Impression", "Click", "Install", "Conversion", "registration", "first_purchase", "purchase"]
+    for column in integer_columns:
+        if column in df.columns:
+            df[column] = pd.to_numeric(df[column], errors="coerce").fillna(0).astype(int)
 
-    for column in ["Spend", "CPI"]:
-        df[column] = (
-            df[column]
-            .astype(str)
-            .str.replace(",", ".", regex=False)
-            .apply(lambda x: float(x) if x not in ("", "nan", None) else 0.0)
-        )
+    # Обработка float колонок
+    float_columns = ["Spend", "CPI", "CPA", "CTR", "Cost per Conversion"]
+    for column in float_columns:
+        if column in df.columns:
+            df[column] = (
+                df[column]
+                .astype(str)
+                .str.replace(",", ".", regex=False)
+                .apply(lambda x: float(x) if x not in ("", "nan", None) else 0.0)
+            )
 
-    numeric_columns = [
-        "Impression",
-        "Click",
-        "Install",
-        "Spend",
-        "CPI",
-        "CPA",
-        "Cost per Conversion",
-        "first_purchase",
-        "registration",
-        "purchase",
-    ]
-    present_numeric = [col for col in numeric_columns if col in df.columns]
-    for column in present_numeric:
-        df[column] = pd.to_numeric(df[column], errors="coerce").fillna(0)
+    # Группировка по Date и Campaign (App и Creative связаны с Campaign)
+    # Определяем какие колонки агрегировать
+    agg_dict = {}
 
-    agg_dict = {col: "sum" for col in present_numeric if col != "CPI" and col != "CPA" and col != "Cost per Conversion"}
-    agg_dict.update({"CPI": "sum"}) if "CPI" in present_numeric else None
-    agg_dict.update({"CPA": "sum"}) if "CPA" in present_numeric else None
-    agg_dict.update({"Cost per Conversion": "sum"}) if "Cost per Conversion" in present_numeric else None
-    if "Currency" in df.columns:
-        agg_dict["Currency"] = "first"
+    # Числовые колонки для суммирования
+    sum_columns = ["Impression", "Click", "Install", "Conversion", "Spend", "registration", "first_purchase", "purchase"]
+    for col in sum_columns:
+        if col in df.columns:
+            agg_dict[col] = "sum"
 
-    grouped = df.groupby(["Date", "Campaign"], as_index=False).agg(agg_dict)
+    # Колонки для взятия первого значения (связаны с Campaign)
+    first_columns = ["Campaign ID", "Countries", "App", "App ID", "Creative", "Creative ID", "Currency", "CTR"]
+    for col in first_columns:
+        if col in df.columns:
+            agg_dict[col] = "first"
+
+    grouped = df.groupby(["Date", "Campaign"], as_index=False).agg(agg_dict) if agg_dict else df
 
     if "Install" in grouped.columns:
         grouped["Install"] = grouped["Install"].astype(float)
@@ -138,12 +154,25 @@ def load_moloco_file(file_path: str | Path, session: Session) -> str:
                     "source_file": path.name,
                     "m_date": row["Date"],
                     "m_campaign": row["Campaign"].strip(),
-                    "m_impression": row.get("Impression", 0),
-                    "m_click": row.get("Click", 0),
-                    "m_install": row.get("Install", 0),
+                    "m_campaign_id": str(row.get("Campaign ID", "")).strip() or None,
+                    "m_countries": str(row.get("Countries", "")).strip() or None,
+                    "m_app": str(row.get("App", "")).strip() or None,
+                    "m_app_id": str(row.get("App ID", "")).strip() or None,
+                    "m_creative": str(row.get("Creative", "")).strip() or None,
+                    "m_creative_id": str(row.get("Creative ID", "")).strip() or None,
+                    "m_impression": int(row.get("Impression", 0) or 0),
+                    "m_click": int(row.get("Click", 0) or 0),
+                    "m_install": int(row.get("Install", 0) or 0),
+                    "m_conversion": int(row.get("Conversion", 0) or 0),
                     "m_spend": float(row.get("Spend", 0) or 0),
+                    "m_ctr": float(row.get("CTR", 0) or 0),
                     "m_cpi": float(row.get("CPI", 0) or 0),
+                    "m_cpa": float(row.get("CPA", 0) or 0),
+                    "m_cost_per_conversion": float(row.get("Cost per Conversion", 0) or 0),
                     "m_currency": (row.get("Currency") or "USD").strip() or "USD",
+                    "m_registration": int(row.get("registration", 0) or 0),
+                    "m_first_purchase": int(row.get("first_purchase", 0) or 0),
+                    "m_purchase": int(row.get("purchase", 0) or 0),
                 }
             )
 
