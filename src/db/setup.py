@@ -13,7 +13,7 @@ def ensure_schema() -> None:
 
     inspector = inspect(engine)
     tables = inspector.get_table_names()
-    if {"data_loads", "tw_events", "moloco_events", "campaign_statistics"}.issubset(set(tables)):
+    if {"data_loads", "tw_events", "tw_clicks_events", "moloco_events", "campaign_statistics"}.issubset(set(tables)):
         return
     Base.metadata.create_all(bind=engine)
 

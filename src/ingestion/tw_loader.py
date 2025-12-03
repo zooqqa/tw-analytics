@@ -24,18 +24,19 @@ REQUIRED_TW_COLUMNS = {
     "first_purchases",
     "registrations",
     "installations",
-    "install2reg",
-    "reg2dep",
     "income_usd",
-    "epc",
 }
 
 # Опциональные колонки (могут присутствовать в старом или новом формате)
 OPTIONAL_TW_COLUMNS = {
+    "install2reg",  # Вычисляется если отсутствует
+    "reg2dep",  # Вычисляется если отсутствует
+    "epc",  # Вычисляется если отсутствует
     "average_bill",
     "purchases_sum",
     "d14_aov",
     "d14_purchases_sum",
+    "clicks",  # Может отсутствовать в data_links.csv
 }
 
 
@@ -70,6 +71,9 @@ def _read_tw_csv(file_path: Path) -> pd.DataFrame:
 
     df["date"] = pd.to_datetime(df["date"], errors="coerce").dt.date
     df = df[df["date"].notna()]
+    # Исключаем строки с некорректной датой 1970-01-01 (обычно означает ошибку парсинга)
+    from datetime import date as date_type
+    df = df[df["date"] != date_type(1970, 1, 1)]
 
     # Заполняем пропущенные названия кампаний по предыдущим записям с тем же оффером
     if "ad_campaign_name" in df.columns:
@@ -104,6 +108,29 @@ def _read_tw_csv(file_path: Path) -> pd.DataFrame:
         )
         if cast_type is int:
             df[column] = df[column].round().astype(int)
+    
+    # Вычисляем отсутствующие колонки
+    if "install2reg" not in df.columns or (df["install2reg"].isna().all() if "install2reg" in df.columns else True):
+        df["install2reg"] = df.apply(
+            lambda row: (row["registrations"] / row["installations"] * 100) if row.get("installations", 0) > 0 else 0.0,
+            axis=1,
+        )
+    
+    if "reg2dep" not in df.columns or (df["reg2dep"].isna().all() if "reg2dep" in df.columns else True):
+        df["reg2dep"] = df.apply(
+            lambda row: (row["first_purchases"] / row["registrations"] * 100) if row.get("registrations", 0) > 0 else 0.0,
+            axis=1,
+        )
+    
+    # epc вычисляется как income_usd / clicks, но если clicks нет, то epc = 0
+    if "epc" not in df.columns or (df["epc"].isna().all() if "epc" in df.columns else True):
+        if "clicks" in df.columns:
+            df["epc"] = df.apply(
+                lambda row: (row["income_usd"] / row["clicks"]) if row.get("clicks", 0) > 0 else 0.0,
+                axis=1,
+            )
+        else:
+            df["epc"] = 0.0
 
     # Удаляем дубликаты по ключу кампания+оффер+дата (берем последнюю)
     return df

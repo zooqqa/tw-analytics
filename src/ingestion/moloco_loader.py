@@ -21,7 +21,6 @@ REQUIRED_MOLOCO_COLUMNS = {
     "Click",
     "Install",
     "Spend",
-    "CPI",
 }
 
 OPTIONAL_MOLOCO_COLUMNS = {
@@ -70,15 +69,23 @@ def _read_moloco_csv(path: Path) -> pd.DataFrame:
             df[column] = pd.to_numeric(df[column], errors="coerce").fillna(0).astype(int)
 
     # Обработка float колонок
-    float_columns = ["Spend", "CPI", "CPA", "CTR", "Cost per Conversion"]
+    # Запятые могут быть разделителями тысяч (214,311.45) или десятичными разделителями (214,45)
+    # Определяем формат: если после запятой 3+ цифры, то это разделитель тысяч
+    float_columns = ["Spend", "CPA", "CTR", "Cost per Conversion"]
     for column in float_columns:
         if column in df.columns:
-            df[column] = (
-                df[column]
-                .astype(str)
-                .str.replace(",", ".", regex=False)
-                .apply(lambda x: float(x) if x not in ("", "nan", None) else 0.0)
-            )
+            def parse_float(value):
+                if pd.isna(value) or value == "" or str(value).lower() == "nan":
+                    return 0.0
+                s = str(value).strip()
+                # Удаляем все запятые - они могут быть разделителями тысяч
+                s = s.replace(",", "")
+                try:
+                    return float(s)
+                except (ValueError, TypeError):
+                    return 0.0
+            
+            df[column] = df[column].apply(parse_float)
 
     # Группировка по Date и Campaign (App и Creative связаны с Campaign)
     # Определяем какие колонки агрегировать
@@ -103,11 +110,6 @@ def _read_moloco_csv(path: Path) -> pd.DataFrame:
     if "Spend" in grouped.columns:
         grouped["Spend"] = grouped["Spend"].astype(float)
 
-    if "CPI" in grouped.columns:
-        grouped["CPI"] = grouped.apply(
-            lambda row: row["Spend"] / row["Install"] if row.get("Install", 0) else 0.0,
-            axis=1,
-        )
     if "CPA" in grouped.columns and "first_purchase" in grouped.columns:
         grouped["CPA"] = grouped.apply(
             lambda row: row["Spend"] / row["first_purchase"] if row.get("first_purchase", 0) else 0.0,
@@ -166,7 +168,7 @@ def load_moloco_file(file_path: str | Path, session: Session) -> str:
                     "m_conversion": int(row.get("Conversion", 0) or 0),
                     "m_spend": float(row.get("Spend", 0) or 0),
                     "m_ctr": float(row.get("CTR", 0) or 0),
-                    "m_cpi": float(row.get("CPI", 0) or 0),
+                    "m_cpi": 0.0,  # Не используется, всегда 0
                     "m_cpa": float(row.get("CPA", 0) or 0),
                     "m_cost_per_conversion": float(row.get("Cost per Conversion", 0) or 0),
                     "m_currency": (row.get("Currency") or "USD").strip() or "USD",

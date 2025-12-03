@@ -58,6 +58,26 @@ class TwEvent(Base):
     __table_args__ = ()
 
 
+class TwClicksEvent(Base):
+    __tablename__ = "tw_clicks_events"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    load_id = Column(String(36), nullable=False, index=True)
+    source_file = Column(String(255), nullable=False)
+    tw_date = Column(Date, nullable=False)
+    tw_ad_campaign_name = Column(String(500))  # Может быть NULL для non-attribution
+    tw_geo_country_code = Column(String(10))
+    tw_carrot_id = Column(String(128))
+    tw_clicks = Column(Integer, default=0)
+    tw_installations = Column(Integer, default=0)
+    tw_registrations = Column(Integer, default=0)
+    tw_deposits = Column(Integer, default=0)  # first_purchases
+    tw_revenue = Column(Numeric(14, 4), default=0)  # income_usd
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+
+    __table_args__ = ()
+
+
 class MolocoEvent(Base):
     __tablename__ = "moloco_events"
 
